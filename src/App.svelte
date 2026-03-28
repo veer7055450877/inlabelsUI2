@@ -9,33 +9,61 @@
   import Minimal      from './variants/Minimal.svelte';
   import Meme         from './variants/Meme.svelte';
 
-  const VARIANTS = [Emotional, Funny, Professional, Retention, Minimal, Meme];
-  const VARIANT_KEYS = ['emotional', 'funny', 'professional', 'retention', 'minimal', 'meme'];
+  const VARIANT_COMPONENTS = {
+    emotional: Emotional,
+    funny: Funny,
+    professional: Professional,
+    retention: Retention,
+    minimal: Minimal,
+    meme: Meme,
+  };
+
+  const DEFAULT_VARIANT = 'professional';
 
   let email        = '';
   let analytics    = null;
-  let variantIndex = null;   // stays null until onMount to avoid flash
+  let variantKey   = '';
   let ready        = false;
+
+  function resolveVariantKey() {
+    const params = new URLSearchParams(window.location.search);
+    const queryVariant = params.get('variant')?.trim().toLowerCase();
+
+    if (queryVariant && queryVariant in VARIANT_COMPONENTS) {
+      return queryVariant;
+    }
+
+    const pathSegments = window.location.pathname
+      .split('/')
+      .map((segment) => segment.trim().toLowerCase())
+      .filter(Boolean);
+
+    const pathVariant = pathSegments[pathSegments.length - 1];
+
+    if (pathVariant && pathVariant in VARIANT_COMPONENTS) {
+      return pathVariant;
+    }
+
+    return DEFAULT_VARIANT;
+  }
 
   onMount(async () => {
     const params  = new URLSearchParams(window.location.search);
     email         = params.get('email') || '';
-    variantIndex  = Math.floor(Math.random() * VARIANTS.length);
+    variantKey    = resolveVariantKey();
 
-    // Build analytics payload once
     analytics = buildAnalytics({
       email,
-      variant: VARIANT_KEYS[variantIndex],
+      variant: variantKey,
       extensionVersion: params.get('v'),
     });
 
-    // Fire-and-forget: save email on page load
     await saveEmail(analytics);
 
     ready = true;
   });
 
-  $: ActiveVariant = variantIndex !== null ? VARIANTS[variantIndex] : null;
+  $: ActiveVariant = variantKey ? VARIANT_COMPONENTS[variantKey] : null;
 </script>
 
 {#if ready && ActiveVariant}
